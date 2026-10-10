@@ -1,0 +1,23 @@
+{
+  "name": "@red-cup-engineering/json-schema-to-owl-shacl-service",
+  "version": "0.1.0",
+  "description": "Mechanically derives an OWL class model and SHACL validation shapes from a set of JSON Schema (draft 2020-12) files, so the schema stays the one authored source and its RDF projection is generated, never hand-duplicated.",
+  "type": "module",
+  "exports": {
+    ".": "./src/json-schema-to-ontology.mjs",
+    "./turtle": "./src/named-graph-as-prefixed-turtle.mjs"
+  },
+  "bin": {
+    "project-json-schema-as-ontology": "scripts/project-json-schema-set-as-ontology.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@red-cup-engineering/computer-triplet-serialized-content-engineering-services-section": "0.1.0",
+    "@red-cup-engineering/turtle-services-section": "0.1.0"
+  }
+}
