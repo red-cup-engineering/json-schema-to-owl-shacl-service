@@ -76,7 +76,7 @@ test("shapes: required property gets minCount 1 and Violation severity; optional
   const statusMinCount = namedGraph.quads.find((q) => q.subject === statusShape && q.predicate === "http://www.w3.org/ns/shacl#minCount");
   const statusSeverity = namedGraph.quads.find((q) => q.subject === statusShape && q.predicate === "http://www.w3.org/ns/shacl#severity");
   assert.equal(statusMinCount, undefined);
-  assert.equal(statusSeverity.object.value, "http://www.w3.org/ns/shacl#Warning");
+  assert.equal(statusSeverity.object.value, "http://www.w3.org/ns/shacl#Violation");
 });
 
 test("shapes: an enum becomes an sh:pattern regex alternation, not a blank-node sh:in list", () => {
@@ -149,4 +149,69 @@ test("a $ref by $id with a JSON Pointer fragment reuses that subschema in place,
 test("refuses a JSON Pointer that names no subschema", () => {
   const broken = { ...noteEntry, schema: { ...noteEntry.schema, properties: { lost: { $ref: "../glossary/terms/term#/properties/nothing" } } } };
   assert.throws(() => buildOwlOntology([broken], { baseIri: BASE_IRI, graphName: "https://example.org/g", references: [termReference] }), /names no subschema/u);
+});
+
+
+test("property enum metacharacters are literal in the generated SHACL pattern", () => {
+  const special = {
+    ...widgetEntry,
+    schema: {
+      ...widgetEntry.schema,
+      properties: {
+        ...widgetEntry.schema.properties,
+        status: {type: "string", enum: ["alpha.beta", "x|y", "a+b?", "[test]"]},
+      },
+    },
+  };
+  const {namedGraph} = buildShaclShapes([special, ownerEntry], {
+    baseIri: BASE_IRI, graphName: "https://example.org/g",
+  });
+  const entry = namedGraph.quads.find(q => q.subject ===
+    BASE_IRI + "widgets/widgetShape/status" &&
+    q.predicate === "http://www.w3.org/ns/shacl#pattern");
+  assert.ok(entry);
+  const re = new RegExp(entry.object.value);
+  for (const value of special.schema.properties.status.enum) assert.equal(re.test(value), true);
+  for (const impostor of ["alphaXbeta", "xx", "ab", "tests"]) assert.equal(re.test(impostor), false);
+});
+
+test("SHACL projection refuses disjunction and closed records it cannot faithfully validate", () => {
+  const duty = {
+    id: "institutional/duty",
+    filePath: "/schemas/duty.schema.json",
+    schema: {
+      $id: "institutional/duty", type: "object",
+      required: ["name", "authority", "claim"],
+      anyOf: [{required: ["work"]}, {required: ["from", "to"]}],
+      properties: {
+        name: {type:"string"}, authority:{type:"string"}, claim:{type:"string"},
+        work:{type:"string"}, from:{type:"string"}, to:{type:"string"},
+      },
+    },
+  };
+  const options = {baseIri: BASE_IRI, graphName: "https://example.org/g"};
+  assert.throws(() => buildShaclShapes([duty], options), /unsupported JSON Schema constraint anyOf/u);
+  const open = {...duty, schema:{...duty.schema}};
+  delete open.schema.anyOf;
+  open.schema.additionalProperties = false;
+  assert.throws(() => buildShaclShapes([open], options), /additionalProperties/u);
+});
+
+test("SHACL refuses silent loss of nested or otherwise unsupported property constraints", () => {
+  const options = {baseIri: BASE_IRI, graphName: "https://example.org/g"};
+  const nested = {...ownerEntry, schema:{
+    ...ownerEntry.schema,
+    properties: {details:{type:"object",properties:{issuedBy:{type:"string"}}}},
+  }};
+  assert.throws(() => buildShaclShapes([nested], options), /unsupported properties/u);
+  const conditional = {...ownerEntry, schema:{
+    ...ownerEntry.schema,
+    properties: {email:{type:"string",minLength:2}},
+  }};
+  assert.throws(() => buildShaclShapes([conditional], options), /unsupported minLength/u);
+  const undefinedRequired = {...ownerEntry, schema:{
+    ...ownerEntry.schema,
+    required: ["missing"],
+  }};
+  assert.throws(() => buildShaclShapes([undefinedRequired], options), /requires undeclared property/u);
 });
