@@ -215,3 +215,26 @@ test("SHACL refuses silent loss of nested or otherwise unsupported property cons
   }};
   assert.throws(() => buildShaclShapes([undefinedRequired], options), /requires undeclared property/u);
 });
+
+test("nested arrays, local references and referenced classes are checked recursively", () => {
+  const options = {baseIri: BASE_IRI, graphName: "https://example.org/g"};
+  const nested = {...widgetEntry, schema: {...widgetEntry.schema,
+    properties: {name: {type:"array", items:{type:"string",minLength:5}}}}};
+  assert.throws(() => buildShaclShapes([nested], options), /unsupported minLength/u);
+
+  const hidden = {...widgetEntry, schema: {...widgetEntry.schema,
+    properties: {name: {$ref: "#/properties/status"},status:{type:"string",minLength:2}}}};
+  assert.throws(() => buildShaclShapes([hidden], options), /reference uses unsupported minLength/u);
+
+  const cyclic = {...widgetEntry, schema: {...widgetEntry.schema,
+    properties: {name: {$ref: "#/properties/name"}}}};
+  assert.throws(() => buildShaclShapes([cyclic], options), /cyclic SHACL property reference/u);
+
+  const nonStringEnum = {...widgetEntry, schema: {...widgetEntry.schema,
+    properties: {name: {type:"integer",enum:[1,2]}}}};
+  assert.throws(() => buildShaclShapes([nonStringEnum], options), /exact enum representation/u);
+
+  const modifiedOwner = {...ownerEntry, schema: {...ownerEntry.schema,
+    additionalProperties: false}};
+  assert.throws(() => buildShaclShapes([widgetEntry,modifiedOwner], options), /additionalProperties/u);
+});
