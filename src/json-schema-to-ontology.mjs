@@ -217,7 +217,8 @@ export function buildShaclShapes(entries, { baseIri, graphName, references = [] 
       } else {
         assert(propertyShapeIri, `${SH}datatype`, iriTerm(described.xsd));
         if (Array.isArray(described.enum)) {
-));
+          if (described.enum.length === 0) fail(`${entry.id} property ${propertyName} has an empty enum`);
+          assert(propertyShapeIri, `${SH}pattern`, literal("^(" + described.enum.map(literalPattern).join("|") + ")$"));
         } else if (typeof described.pattern === "string") {
           assert(propertyShapeIri, `${SH}pattern`, literal(described.pattern));
         }
