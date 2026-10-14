@@ -40,12 +40,35 @@ not a per-file exception.
   named `sh:property` shape per property (`<classIri>Shape/<property>`) —
   named, not blank-node, shapes throughout, because this section's own RDF
   term primitives refuse blank nodes by design. A `required` property gets
-  `sh:minCount 1` and `sh:severity sh:Violation`; an optional one gets
-  `sh:severity sh:Warning` and no `sh:minCount`. A non-array property gets
-  `sh:maxCount 1`. A JSON Schema `enum` becomes `sh:pattern` (a regex
-  alternation) rather than an `sh:in` RDF list, for the same
-  no-blank-nodes reason (`sh:in`'s list structure is conventionally blank
-  nodes). A string `pattern` becomes `sh:pattern` as written.
+  `sh:minCount 1` and `sh:severity sh:Violation`; optional
+  properties have no `sh:minCount`, but an **observed invalid value** still
+  produces a violation. A non-array property gets `sh:maxCount 1`.
+  Supported JSON Schema `enum` *string* values are escaped into an
+  anchored `sh:pattern` rather than silently treated as regex operators.
+  A supported string `pattern` is carried as `sh:pattern`.
+
+## Semantic completeness boundary
+
+This is a **partial, fail-closed projector**, not a general JSON Schema
+Draft 2020-12 validator or an OWL reasoner. It creates a SHACL graph only
+when every constraint on a class-defining source schema is expressible in
+the currently implemented profile. Root-level `anyOf`, `oneOf`,
+`allOf`, conditional logic, and unsupported closed-record restrictions
+refuse rather than yielding a graph that appears to validate them.
+Unsupported property constraints and nested object values similarly
+refuse. Imported `$ref` paths must resolve to their real sources.
+
+The Group's current `duty.schema.json` has an `anyOf` obligation and
+`additionalProperties: false`; **this projector refuses that source**
+until those semantics are realized without loss. Do not invent a
+second simplified duty shape, or publish a "validated" Group ontology
+from its missing constraints. A source-owned JSON Schema, its generated
+OWL classes, and a SHACL *data graph validation result* are separate
+objects; none establishes an appointment, authority, theorem or task
+completion. Ontology projections are generated artifacts, never another
+governing vocabulary. Run the package's native tests and an independent
+W3C SHACL validator over accepted and violating data before claiming
+standards conformance.
 
 ## Use
 
