@@ -106,7 +106,7 @@ function index(entries, baseIri, references = []) {
     return { kind: "unsupported" };
   }
 
-  return { classIriById, describe };
+  return { classIriById, describe, target };
 }
 
 /**
@@ -151,29 +151,48 @@ function literalPattern(value) {
 }
 
 /** Refuse a schema when SHACL would silently omit a load-bearing constraint. */
-function requireShaclSubset(entry) {
-  const schema = entry.schema;
-  for (const key of ["anyOf", "oneOf", "allOf", "not", "if", "then", "else",
-    "dependentRequired", "dependentSchemas", "patternProperties",
-    "propertyNames", "minProperties", "maxProperties", "unevaluatedProperties"]) {
-    if (Object.hasOwn(schema, key)) fail(`${entry.id} uses unsupported JSON Schema constraint ${key}: refusing incomplete SHACL validation`);
-  }
-  if (Object.hasOwn(schema, "additionalProperties") && schema.additionalProperties !== true) {
-    fail(`${entry.id} requires unimplemented additionalProperties handling: refusing incomplete SHACL validation`);
-  }
-  const properties = schema.properties;
-  for (const required of schema.required ?? []) {
-    if (!Object.hasOwn(properties, required)) fail(`${entry.id} requires undeclared property ${required}`);
-  }
-  const supportedPropertyKeys = new Set(["type", "$ref", "description", "title", "default",
-    "examples", "$comment", "enum", "pattern", "items"]);
-  for (const [name, property] of Object.entries(properties)) {
-    for (const key of Object.keys(property)) {
-      if (!supportedPropertyKeys.has(key)) {
-        fail(`${entry.id} property ${name} uses unsupported ${key}: refusing incomplete SHACL validation`);
-      }
+function requireShaclSubset(entry, resolveRef, active = new Set()) {
+  const rootUnsupported = new Set(["anyOf","oneOf","allOf","not","if","then","else","dependentRequired","dependentSchemas","patternProperties","propertyNames","minProperties","maxProperties","unevaluatedProperties","unevaluatedItems","minItems","maxItems","contains","prefixItems","minContains","maxContains","uniqueItems","$dynamicRef"]);
+  const propertyAllowed = new Set(["type","$ref","description","title","default","examples","$comment","enum","pattern","items"]);
+  const schema = entry?.schema;
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) fail(`${entry?.id ?? "schema"} must be an object for SHACL projection`);
+  if (active.has(schema)) fail(`${entry.id} has a cyclic SHACL source reference`);
+  active.add(schema);
+  try {
+    for (const key of Object.keys(schema)) {
+      if (rootUnsupported.has(key)) fail(`${entry.id} uses unsupported JSON Schema constraint ${key}: refusing incomplete SHACL validation`);
     }
-  }
+    if (Object.hasOwn(schema, "additionalProperties") && schema.additionalProperties !== true) fail(`${entry.id} requires unimplemented additionalProperties handling: refusing incomplete SHACL validation`);
+    if (schema.type !== "object" || !schema.properties || typeof schema.properties !== "object" || Array.isArray(schema.properties)) fail(`${entry.id} needs a class-defining object schema for SHACL`);
+    for (const required of schema.required ?? []) if (!Object.hasOwn(schema.properties, required)) fail(`${entry.id} requires undeclared property ${required}`);
+    function propertySubset(property, from, label) {
+      if (!property || typeof property !== "object" || Array.isArray(property)) fail(`${label} must use an admitted property schema`);
+      if (active.has(property)) fail(`${label} has a cyclic SHACL property reference`);
+      active.add(property);
+      try {
+        for (const key of Object.keys(property)) if (!propertyAllowed.has(key)) fail(`${label} uses unsupported ${key}: refusing incomplete SHACL validation`);
+        if (Object.hasOwn(property, "$ref")) {
+          if (typeof property.$ref !== "string") fail(`${label} has an invalid $ref`);
+          if (["type","enum","pattern","items"].some(key => Object.hasOwn(property, key))) fail(`${label} combines a $ref with unsupported sibling validation rules`);
+          const {entry: referenced, fragment} = resolveRef(from, property.$ref);
+          if (fragment === "") requireShaclSubset(referenced, resolveRef, active);
+          else propertySubset(atPointer(referenced.schema, fragment), referenced, `${label} reference`);
+          return;
+        }
+        if (property.type === "array") {
+          if (!Object.hasOwn(property, "items") || Object.hasOwn(property, "enum") || Object.hasOwn(property, "pattern")) fail(`${label} has an unsupported array constraint`);
+          propertySubset(property.items, from, `${label} item`);
+          return;
+        }
+        if (!["string","integer","number","boolean"].includes(property.type) || Object.hasOwn(property, "items")) fail(`${label} has an unsupported property type`);
+        if (Object.hasOwn(property, "pattern") && property.type !== "string") fail(`${label} uses a pattern outside string semantics`);
+        if (Object.hasOwn(property, "enum")) {
+          if (property.type !== "string" || !Array.isArray(property.enum) || property.enum.length === 0 || property.enum.some(value => typeof value !== "string") || Object.hasOwn(property, "pattern")) fail(`${label} requires an exact enum representation rather than a partial regex`);
+        }
+      } finally { active.delete(property); }
+    }
+    for (const [name, property] of Object.entries(schema.properties)) propertySubset(property, entry, `${entry.id} property ${name}`);
+  } finally {active.delete(schema);}
 }
 
 /**
@@ -186,13 +205,13 @@ function requireShaclSubset(entry) {
  * @param {{baseIri: string, graphName: string}} options
  */
 export function buildShaclShapes(entries, { baseIri, graphName, references = [] }) {
-  const { classIriById, describe } = index(entries, baseIri, references);
+  const { classIriById, describe, target } = index(entries, baseIri, references);
   const statements = [];
   const assert = (subject, predicate, object) => statements.push({ subject, predicate, object });
 
   for (const entry of entries) {
     if (!definesOwnClass(entry.schema)) continue;
-    requireShaclSubset(entry);
+    requireShaclSubset(entry, target);
     const classIri = classIriById.get(entry.id);
     const shapeIri = `${classIri}Shape`;
     const required = new Set(entry.schema.required ?? []);
