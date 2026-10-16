@@ -17,8 +17,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@red-cup-engineering/computer-triplet-serialized-content-engineering-services-section": "0.1.0",
-    "@red-cup-engineering/turtle-services-section": "0.1.1"
+    "@red-cup-engineering/computer-triplet-serialized-content-engineering-services-section": "0.1.1",
+    "@red-cup-engineering/turtle-services-section": "0.1.2"
   },
   "private": false,
   "files": [
