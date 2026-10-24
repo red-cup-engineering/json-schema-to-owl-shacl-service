@@ -54,6 +54,41 @@ not a per-file exception.
   anchored `sh:pattern` rather than silently treated as regex operators.
   A supported string `pattern` is carried as `sh:pattern`.
 
+## Source integrity and required-array presence
+
+In JSON Schema 2020-12 a listed property in `required` must *exist*;
+it need not contain an element. Thus `{ "contacts": [] }` satisfies a
+schema with `required:["contacts"]` and
+`contacts:{type:"array",items:{type:"string"}}`.
+This project's repeatable-property RDF mapping represents the array using
+zero or more values along one predicate. An empty array then has zero such
+triples, indistinguishable from a **missing** property. Adding
+`sh:minCount 1` would reject the valid empty array. Until an original
+JSON-to-RDF carrier explicitly represents empty-list presence, this
+projector **refuses** required arrays (including those reached through
+JSON Pointer references) instead of silently claiming SHACL conformance.
+Optional repeated values remain supported without a synthetic cardinality.
+
+The same fail-closed admission now rejects invalid JSON Schema `required`
+keywords (they must be arrays of unique strings, including the legal empty
+array), duplicate logical schema IDs or retrieval paths, and malformed
+`properties` values. These protections avoid false class equivalence or
+quiet field dropping across independently controlled enterprise schemas.
+Both OWL and SHACL builders preserve the source-identity refusal. No
+independent SHACL data-validation receipt or authority/permission grant
+follows from the output graph alone.
+
+The existing `npm test` glob includes
+`test/shacl-source-preservation.test.mjs`, which tests these boundaries
+against exact accepted and rejected source cases. Two original test fixtures
+were corrected where replacing all properties had mistakenly retained
+irrelevant `required` names; their original intended negative tests remain.
+Full package dependency-closed native tests and an independent W3C SHACL
+validator remain the consumers' receiving work, not claimed by this source PR.
+
+Sources: [JSON Schema Draft 2020-12 validation](https://json-schema.org/draft/2020-12/json-schema-validation),
+[W3C SHACL Core](https://www.w3.org/TR/shacl/).
+
 ## Semantic completeness boundary
 
 This is a **partial, fail-closed projector**, not a general JSON Schema
