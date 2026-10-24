@@ -182,7 +182,7 @@ function requireShaclSubset(entry, resolveRef, active = new Set()) {
     if (schema.type !== "object" || !schema.properties || typeof schema.properties !== "object" || Array.isArray(schema.properties)) fail(`${entry.id} needs a class-defining object schema for SHACL`);
     // JSON Schema 2020-12 requires an array of unique string field names.
     // A string, duplicates or non-string element is not a valid replacement.
-    const requiredNames = schema.required ?? [];
+    const requiredNames = Object.hasOwn(schema, "required") ? schema.required : [];
     if (!Array.isArray(requiredNames) || requiredNames.some(name => typeof name !== "string") ||
         new Set(requiredNames).size !== requiredNames.length)
       fail(`${entry.id} required must contain unique string property names`);
