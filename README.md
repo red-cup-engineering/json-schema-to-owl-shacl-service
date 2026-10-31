@@ -30,7 +30,7 @@ not a per-file exception.
 
 - A `$ref` resolves as JSON Schema reads one: by retrieval path relative
   to the referring file, else by `$id` (the bare address first, then
-  resolved against the referring schema's `$id`, as the house validator
+  resolved against the referring schema's `$id`, as the Group validator
   does).
 - A property that is a `$ref` to a whole schema (or an `array` of one)
   becomes an `owl:ObjectProperty`, `rdfs:range` the referenced schema's
