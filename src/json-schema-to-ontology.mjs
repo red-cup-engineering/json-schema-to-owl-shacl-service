@@ -35,7 +35,7 @@ function fail(message) {
 
 /** True for a schema this generator mints a class for: it declares its own `properties`. */
 function definesOwnClass(schema) {
-  return schema?.type === "object" && schema.properties !== undefined && typeof schema.properties === "object";
+  return schema?.type === "object" && schema.properties !== null && typeof schema.properties === "object" && !Array.isArray(schema.properties);
 }
 
 /** The subschema a JSON Pointer fragment (`/properties/aliases`) names inside `schema`. */
@@ -60,6 +60,22 @@ function atPointer(schema, fragment) {
  */
 function index(entries, baseIri, references = []) {
   const all = [...entries, ...references];
+  // A duplicate logical identity silently redirects $ref and merges unrelated
+  // fields into one generated SHACL class: never silently last-write-wins.
+  const ids = new Set(), paths = new Set();
+  for (const entry of all) {
+    if (!entry || typeof entry.id !== "string" || !entry.id ||
+        typeof entry.filePath !== "string" || !entry.filePath ||
+        !entry.schema || typeof entry.schema !== "object")
+      fail("each ontology input needs a source-qualified id, path and schema object");
+    if (ids.has(entry.id) || paths.has(entry.filePath))
+      fail(`duplicate schema identity or source path: ${entry.id} at ${entry.filePath}`);
+    if (Object.hasOwn(entry.schema, "properties") &&
+        (entry.schema.properties === null || typeof entry.schema.properties !== "object" ||
+        Array.isArray(entry.schema.properties)))
+      fail(`${entry.id} has an invalid properties declaration`);
+    ids.add(entry.id); paths.add(entry.filePath);
+  }
   const byFilePath = new Map(all.map((entry) => [entry.filePath, entry]));
   const byId = new Map(all.map((entry) => [entry.id, entry]));
   const classIriById = new Map(entries.filter((entry) => definesOwnClass(entry.schema)).map((entry) => [entry.id, `${baseIri}${entry.id}`]));
@@ -164,7 +180,14 @@ function requireShaclSubset(entry, resolveRef, active = new Set()) {
     }
     if (Object.hasOwn(schema, "additionalProperties") && schema.additionalProperties !== true) fail(`${entry.id} requires unimplemented additionalProperties handling: refusing incomplete SHACL validation`);
     if (schema.type !== "object" || !schema.properties || typeof schema.properties !== "object" || Array.isArray(schema.properties)) fail(`${entry.id} needs a class-defining object schema for SHACL`);
-    for (const required of schema.required ?? []) if (!Object.hasOwn(schema.properties, required)) fail(`${entry.id} requires undeclared property ${required}`);
+    // JSON Schema 2020-12 requires an array of unique string field names.
+    // A string, duplicates or non-string element is not a valid replacement.
+    const requiredNames = Object.hasOwn(schema, "required") ? schema.required : [];
+    if (!Array.isArray(requiredNames) || requiredNames.some(name => typeof name !== "string") ||
+        new Set(requiredNames).size !== requiredNames.length)
+      fail(`${entry.id} required must contain unique string property names`);
+    for (const required of requiredNames)
+      if (!Object.hasOwn(schema.properties, required)) fail(`${entry.id} requires undeclared property ${required}`);
     function propertySubset(property, from, label) {
       if (!property || typeof property !== "object" || Array.isArray(property)) fail(`${label} must use an admitted property schema`);
       if (active.has(property)) fail(`${label} has a cyclic SHACL property reference`);
@@ -223,6 +246,12 @@ export function buildShaclShapes(entries, { baseIri, graphName, references = [] 
       if (described.kind === "unsupported") {
         fail(`${entry.id} property ${propertyName} has no faithful SHACL representation`);
       }
+      // A required JSON array may be present as []. Repeated RDF property
+      // values have zero triples for both [] and an absent field. SHACL
+      // sh:minCount 1 would therefore reject valid JSON source data.
+      // A referenced array is equally unsafe; do not publish false parity.
+      if (required.has(propertyName) && described.repeatable)
+        fail(`${entry.id} required array ${propertyName} cannot preserve empty-array presence in this SHACL RDF profile`);
       const propertyIri = `${classIri}#${propertyName}`;
       const propertyShapeIri = `${shapeIri}/${propertyName}`;
       assert(shapeIri, `${SH}property`, iriTerm(propertyShapeIri));

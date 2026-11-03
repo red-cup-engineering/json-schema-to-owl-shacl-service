@@ -200,7 +200,7 @@ test("SHACL projection refuses disjunction and closed records it cannot faithful
 test("SHACL refuses silent loss of nested or otherwise unsupported property constraints", () => {
   const options = {baseIri: BASE_IRI, graphName: "https://example.org/g"};
   const nested = {...ownerEntry, schema:{
-    ...ownerEntry.schema,
+    ...ownerEntry.schema, required: [],
     properties: {details:{type:"object",properties:{issuedBy:{type:"string"}}}},
   }};
   assert.throws(() => buildShaclShapes([nested], options), /unsupported properties/u);
@@ -218,19 +218,19 @@ test("SHACL refuses silent loss of nested or otherwise unsupported property cons
 
 test("nested arrays, local references and referenced classes are checked recursively", () => {
   const options = {baseIri: BASE_IRI, graphName: "https://example.org/g"};
-  const nested = {...widgetEntry, schema: {...widgetEntry.schema,
+  const nested = {...widgetEntry, schema: {...widgetEntry.schema, required:["name"],
     properties: {name: {type:"array", items:{type:"string",minLength:5}}}}};
   assert.throws(() => buildShaclShapes([nested], options), /unsupported minLength/u);
 
-  const hidden = {...widgetEntry, schema: {...widgetEntry.schema,
+  const hidden = {...widgetEntry, schema: {...widgetEntry.schema, required:["name"],
     properties: {name: {$ref: "#/properties/status"},status:{type:"string",minLength:2}}}};
   assert.throws(() => buildShaclShapes([hidden], options), /reference uses unsupported minLength/u);
 
-  const cyclic = {...widgetEntry, schema: {...widgetEntry.schema,
+  const cyclic = {...widgetEntry, schema: {...widgetEntry.schema, required:["name"],
     properties: {name: {$ref: "#/properties/name"}}}};
   assert.throws(() => buildShaclShapes([cyclic], options), /cyclic SHACL property reference/u);
 
-  const nonStringEnum = {...widgetEntry, schema: {...widgetEntry.schema,
+  const nonStringEnum = {...widgetEntry, schema: {...widgetEntry.schema, required:["name"],
     properties: {name: {type:"integer",enum:[1,2]}}}};
   assert.throws(() => buildShaclShapes([nonStringEnum], options), /exact enum representation/u);
 
