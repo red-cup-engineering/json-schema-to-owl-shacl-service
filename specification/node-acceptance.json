@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "basis": "Build an ontology from explicitly supplied class-defining JSON Schema entries.",
+  "cases": [
+    {
+      "id": "SCHEMA-ONTOLOGY-REFUSAL",
+      "role": "source",
+      "kind": "refusal",
+      "claim": "References that do not resolve to a supplied class-defining schema are refused.",
+      "file": "test/json-schema-to-ontology.test.mjs",
+      "test": "refuses a $ref that does not resolve to a supplied class-defining entry"
+    },
+    {
+      "id": "SCHEMA-ONTOLOGY-QUICKSTART",
+      "role": "consumer",
+      "kind": "example",
+      "claim": "An installed caller mints a class for a schema with its own properties.",
+      "file": "examples/quickstart.test.mjs"
+    }
+  ]
+}

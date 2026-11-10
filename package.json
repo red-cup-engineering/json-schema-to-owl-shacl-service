@@ -15,7 +15,8 @@
     "project-json-schema-as-ontology": "scripts/project-json-schema-set-as-ontology.mjs"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:consumer": "node --test examples/quickstart.test.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -30,7 +31,9 @@
     "README*",
     "LICENSE*",
     "scripts",
-    "src"
+    "src",
+    "docs/API.md",
+    "examples/quickstart.test.mjs"
   ],
   "license": "MIT",
   "funding": {

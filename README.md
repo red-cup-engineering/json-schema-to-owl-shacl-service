@@ -133,3 +133,7 @@ read the same on every machine. Rerun after editing a schema; the two
 synthetic schema fixture (a `widget`/`owner` pair plus a thin
 `released-widget` wrapper, and a `note` borrowing from a referenced `term`), independent of any consuming section's real
 schemas.
+
+## Acceptance
+
+Run `npm test` for the source suite. See the [API reference](docs/API.md) and [runnable consumer example](examples/quickstart.test.mjs).
