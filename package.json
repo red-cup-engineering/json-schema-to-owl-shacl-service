@@ -9,14 +9,16 @@
   "type": "module",
   "exports": {
     ".": "./src/json-schema-to-ontology.mjs",
-    "./turtle": "./src/named-graph-as-prefixed-turtle.mjs"
+    "./turtle": "./src/named-graph-as-prefixed-turtle.mjs",
+    "./project": "./scripts/project-json-schema-set-as-ontology.mjs"
   },
   "bin": {
     "project-json-schema-as-ontology": "scripts/project-json-schema-set-as-ontology.mjs"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "test:consumer": "node --test examples/quickstart.test.mjs"
+    "test:consumer": "node --test examples/quickstart.test.mjs",
+    "verify": "npm test && npm run test:consumer"
   },
   "engines": {
     "node": ">=18"

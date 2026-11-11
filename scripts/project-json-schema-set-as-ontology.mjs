@@ -8,8 +8,10 @@
 // schema stating no `$id` is refused rather than guessed at. Each --reference
 // is a schema another authority holds that the set's `$ref`s may name; it
 // resolves them and mints nothing.
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { parseArgs } from "node:util";
 import { buildOwlOntology, buildShaclShapes } from "../src/json-schema-to-ontology.mjs";
 import { renderNamedGraphAsTurtle } from "../src/named-graph-as-prefixed-turtle.mjs";
 
@@ -55,15 +57,31 @@ export function projectJsonSchemaSetAsOntology({ schemaDirectory, baseIri, outDi
   return { ontologyPath, shapesPath, classes: [...ontology.classIriById.keys()], ontologyTriples: ontology.namedGraph.size, shapesTriples: shapes.namedGraph.size };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const [schemaDirectory, baseIri] = process.argv.slice(2).filter((arg, at, args) => !arg.startsWith("--") && !["--out-dir", "--reference"].includes(args[at - 1]));
-  const outDirFlagIndex = process.argv.indexOf("--out-dir");
-  const outDir = outDirFlagIndex === -1 ? undefined : process.argv[outDirFlagIndex + 1];
-  if (!schemaDirectory || !baseIri) {
-    process.stderr.write("usage: project-json-schema-as-ontology <schemaDirectory> <baseIri> [--out-dir <dir>] [--reference <file>]...\n");
+if (process.argv[1] && existsSync(process.argv[1]) &&
+    import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+  const usage = "usage: project-json-schema-as-ontology <schemaDirectory> <baseIri> [--out-dir <dir>] [--reference <file>]...";
+  const { positionals, values } = parseArgs({
+    allowPositionals: true,
+    options: {
+      "out-dir": { type: "string" },
+      reference: { type: "string", multiple: true },
+      help: { type: "boolean", short: "h" },
+    },
+  });
+  if (values.help) {
+    console.log(usage);
+    process.exit(0);
+  }
+  if (positionals.length !== 2) {
+    console.error(usage);
     process.exit(2);
   }
-  const references = process.argv.flatMap((arg, at) => (arg === "--reference" ? [process.argv[at + 1]] : []));
-  const result = projectJsonSchemaSetAsOntology({ schemaDirectory: resolve(schemaDirectory), baseIri, outDir: outDir ? resolve(outDir) : undefined, references });
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  const [schemaDirectory, baseIri] = positionals;
+  const result = projectJsonSchemaSetAsOntology({
+    schemaDirectory: resolve(schemaDirectory),
+    baseIri,
+    outDir: values["out-dir"] === undefined ? undefined : resolve(values["out-dir"]),
+    references: values.reference,
+  });
+  console.log(JSON.stringify(result, null, 2));
 }

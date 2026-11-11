@@ -137,3 +137,7 @@ schemas.
 ## Acceptance
 
 Run `npm test` for the source suite. See the [API reference](docs/API.md) and [runnable consumer example](examples/quickstart.test.mjs).
+
+Run `npm ci` and `npm run verify` to check the projection and its command-line
+consumer. The `./project` export exposes `projectJsonSchemaSetAsOntology`
+for callers that supply a schema directory, base IRI and destination.
