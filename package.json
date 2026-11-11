@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/json-schema-to-owl-shacl-service",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Mechanically derives an OWL class model and SHACL validation shapes from a set of JSON Schema (draft 2020-12) files, so the schema stays the one authored source and its RDF projection is generated, never hand-duplicated.",
   "repository": {
     "type": "git",
