@@ -16,7 +16,7 @@ vocabulary.
 Built on this section's own RDF primitives
 (`rdf-term-construction-service`'s `iriTerm`/`literal`,
 `rdf-named-graph-construction-service`'s `buildNamedGraph`,
-`turtle-services-section/services/turtle-term-writing-service`'s
+`turtle-engineering-services-section/services/turtle-term-writing-service`'s
 `iriRef`/`turtleLiteral`), not hand-formatted template strings.
 
 ## Rule
