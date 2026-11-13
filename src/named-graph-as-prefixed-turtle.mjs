@@ -3,7 +3,7 @@
 // compacting any IRI under a supplied prefix map and falling back to a
 // full IRIREF otherwise. Built on the Turtle codec's `iriRef`/
 // `turtleLiteral` writers rather than hand-rolled escaping.
-import { iriRef, turtleLiteral } from "@red-cup-engineering/turtle-services-section/turtle";
+import { iriRef, turtleLiteral } from "@red-cup-engineering/turtle-engineering-services-section/turtle";
 
 const XSD_INTEGER = "http://www.w3.org/2001/XMLSchema#integer";
 const XSD_DECIMAL = "http://www.w3.org/2001/XMLSchema#decimal";
